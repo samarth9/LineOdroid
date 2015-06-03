@@ -1,0 +1,11 @@
+This code is for ODROID
+It takes parameters from a file "params.txt"
+
+it has format :
+
+minHue maxHue minSaturation maxSaturation minValue maxValue
+kernelSize SmoothingType SigmaSpace SigmaColor 
+HoughLineThreshold minLineLength maxLineGap
+houghLinethreshold
+
+This file will come from "LineCalibrate"
