@@ -30,6 +30,7 @@ int houghThresh; //15
 
 double rho=0.1;
 double finalAngle;
+double minDeviation=0.02;
 
 void StretchContrast()
 {
@@ -41,15 +42,38 @@ void StretchContrast()
 	merge(ch,3,img);
 }
 
-double computeMode(vector<Vec2f> rhoAngle){
-	//mode should be returned to be perfect
-	//but in current scenario mean would do
-	//write code for mode otherwise
+double computeMean(vector<Vec2f>& newRhoAngle){
 	double sum=0;
-	for( size_t i = 0; i < rhoAngle.size(); i++ ){
-    	sum=sum+rhoAngle[i][1];    		
+	for( size_t i = 0; i < newRhoAngle.size(); i++ ){
+    	sum=sum+newRhoAngle[i][1];    		
     }
-    return sum/rhoAngle.size();
+    return sum/newRhoAngle.size();
+}
+
+double computeMode(vector<Vec2f>& newRhoAngle){
+	double mode=newRhoAngle[0][1];
+	int freq=1;
+	int tempFreq;
+	double diff;
+	for(int i=0;i<newRhoAngle.size();i++){
+		tempFreq=1;
+
+		for(int j=i+1;j<newRhoAngle.size();j++){
+			diff=newRhoAngle[j][1]-newRhoAngle[i][1]>0.0? newRhoAngle[j][1]-newRhoAngle[i][1]:newRhoAngle[i][1]-newRhoAngle[j][1];
+			if(diff<=minDeviation){
+				tempFreq++;
+				newRhoAngle.erase(newRhoAngle.begin()+j);
+				j=j-1;
+			}
+		}
+
+		if(tempFreq>=freq){
+			mode=newRhoAngle[i][1];
+			freq=tempFreq;
+		}
+	}
+
+	return mode;
 }
 
 void SmoothCallback(int ,void *){
@@ -109,12 +133,18 @@ void callback(int ,void *){
 	Canny(imgLines,imgLines,50,150,3,true);//canny edge detection
 	vector<Vec2f> rhoAngle;
     HoughLines(imgLines, rhoAngle, rho, CV_PI/180, houghThresh, 0, 0 );
-    finalAngle=computeMode(rhoAngle);
+ 
     cout<<"No of lines finally: "<<rhoAngle.size()<<" "<<", Angles(radian): ";	
     for( size_t i = 0; i < rhoAngle.size(); i++ ){
     	cout<<rhoAngle[i][1]<<" ";    		
     } 
     cout<<endl;
+
+    //if num of lines are large than one or two stray lines won't affect the mean much
+    //but if they are small in number than mode has to be taken to save the error due to those stray line
+    if(rhoAngle.size()>0 && rhoAngle.size()<10) finalAngle=computeMode(rhoAngle);
+    else finalAngle=computeMean(rhoAngle);
+
     cout<<"Final Angle: "<<finalAngle<<endl;
 
 	//imshow("check",imgLines);
@@ -127,8 +157,7 @@ int main( int argc, char** argv ) {
 	fclose(fp);
 
     VideoCapture cap(0); //capture the video from webcam
-    //VideoCapture cap("outputnorm.avi"); //path of the video 
-    //VideoCapture cap("TestingLine.mp4"); //path of the video 
+    //VideoCapture cap("TestingLine.mp4"); //path of the video for checking the code 
 
     if ( !cap.isOpened() )  // if not success, exit program
     {
